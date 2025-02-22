@@ -36,21 +36,35 @@ app.get('/', (req, res) => {
 // Swagger
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+// Manejador de errores global
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    error: 'Internal Server Error', 
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Error interno del servidor'
+  });
+})
+
+// Middleware CORS mejorado
 const corsOptions = {
-  origin: function (origin: any, callback: any) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+  origin: (origin: any, callback: any) => {
+    const allowedOrigins = [
+      'http://localhost:8080',
+      'https://microservicioautenticacion-bje8eahhh2hsf5dt.eastus-01.azurewebsites.net',
+      // Agrega aquí otros orígenes permitidos
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('No permitido por CORS'));
+      callback(new Error('Bloqueado por CORS'));
     }
   },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
 };
 
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/reset', reset);
@@ -67,11 +81,6 @@ app.post("/cache", async (req, res) => {
 
 });
 const PORT = process.env.PORT || 8080;
-
-const allowedOrigins = [
-  'http://localhost:8080',
-  'https://microservicioautenticacion-bje8eahhh2hsf5dt.eastus-01.azurewebsites.net'
-];
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
